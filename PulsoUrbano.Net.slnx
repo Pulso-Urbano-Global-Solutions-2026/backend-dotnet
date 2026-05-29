@@ -1,3 +1,6 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/PulsoUrbano.Net.Tests/PulsoUrbano.Net.Tests.csproj" />
+  </Folder>
   <Project Path="PulsoUrbano.Net/PulsoUrbano.Net.csproj" />
 </Solution>
