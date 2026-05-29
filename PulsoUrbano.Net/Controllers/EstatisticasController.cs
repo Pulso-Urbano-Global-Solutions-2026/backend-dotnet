@@ -6,6 +6,7 @@ namespace PulsoUrbano.Net.Controllers;
 
 [ApiController]
 [Route("api/estatisticas")]
+[Produces("application/json")]
 public class EstatisticasController(IEstatisticasService service) : ControllerBase
 {
     /// <summary>Retorna estatísticas agregadas de uma zona no período.</summary>

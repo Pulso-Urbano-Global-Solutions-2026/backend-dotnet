@@ -6,6 +6,7 @@ namespace PulsoUrbano.Net.Controllers;
 
 [ApiController]
 [Route("api/health")]
+[Produces("application/json")]
 public class HealthController(AppDbContext db) : ControllerBase
 {
     /// <summary>Verifica a saúde da API e a conectividade com o banco.</summary>
