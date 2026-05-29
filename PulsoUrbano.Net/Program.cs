@@ -1,7 +1,11 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using PulsoUrbano.Net.Data;
 using PulsoUrbano.Net.Exceptions;
 using PulsoUrbano.Net.Middleware;
+using PulsoUrbano.Net.Services;
+using PulsoUrbano.Net.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,8 +26,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();  // configured fully in N-27
 
-// --- AlertaService — registered in N-22 ---
-// builder.Services.AddScoped<AlertaService>();
+// --- Domain services (N-22) ---
+builder.Services.AddScoped<IAlertaService, AlertaService>();
+builder.Services.AddScoped<IEstatisticasService, EstatisticasService>();
+builder.Services.AddValidatorsFromAssemblyContaining<AlertaCreateDTOValidator>();
+builder.Services.AddFluentValidationAutoValidation(); // returns 400 on invalid model automatically
 
 // --- CORS: allows mobile and Java API to call ---
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
