@@ -97,8 +97,8 @@ app.UseMiddleware<JwtValidationMiddleware>();
 app.UseRouting();
 app.MapControllers();
 
-// Auto-migrate + seed on startup in Development (N-10/N-11)
-if (app.Environment.IsDevelopment())
+// Auto-migrate + seed on startup in Development only (skip in Testing — factory handles it)
+if (app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
