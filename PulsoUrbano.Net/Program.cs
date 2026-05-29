@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using PulsoUrbano.Net.Data;
 using PulsoUrbano.Net.Exceptions;
 using PulsoUrbano.Net.Middleware;
@@ -24,7 +25,42 @@ builder.Services.AddDbContext<AppDbContext>(opt => opt.UseOracle(oracleConn));
 // --- Services ---
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();  // configured fully in N-27
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title       = "Pulso Urbano .NET",
+        Version     = "v1",
+        Description = "API secundária — histórico de alertas e estatísticas ambientais de São Paulo."
+    });
+
+    // Bearer button — professor inserts the Java-issued JWT and tests protected endpoints live
+    var bearer = new OpenApiSecurityScheme
+    {
+        Name         = "Authorization",
+        Type         = SecuritySchemeType.Http,
+        Scheme       = "bearer",
+        BearerFormat = "JWT",
+        In           = ParameterLocation.Header,
+        Description  = "Token JWT emitido pelo Java API. Ex: Bearer eyJhbGci..."
+    };
+    c.AddSecurityDefinition("Bearer", bearer);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    c.EnableAnnotations();
+
+    var xml = Path.Combine(AppContext.BaseDirectory, "PulsoUrbano.Net.xml");
+    if (File.Exists(xml)) c.IncludeXmlComments(xml);
+});
 
 // --- Domain services (N-22) ---
 builder.Services.AddScoped<IAlertaService, AlertaService>();
