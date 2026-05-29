@@ -1,0 +1,6 @@
+@PulsoUrbano.Net_HostAddress = http://localhost:5136
+
+GET {{PulsoUrbano.Net_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
