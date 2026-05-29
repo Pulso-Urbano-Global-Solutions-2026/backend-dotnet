@@ -1,0 +1,8 @@
+**/.vs
+**/.git
+**/obj
+**/bin
+tests/
+pulso-context/
+*.user
+*.slnx.user
