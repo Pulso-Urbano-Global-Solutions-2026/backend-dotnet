@@ -50,11 +50,11 @@ app.UseCors();
 app.UseRouting();
 app.MapControllers();
 
-// Auto-migrate in Development only (enable in N-10)
+// Auto-migrate on startup in Development (N-10)
 if (app.Environment.IsDevelopment())
 {
-    // using var scope = app.Services.CreateScope();
-    // scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
 app.Run();
