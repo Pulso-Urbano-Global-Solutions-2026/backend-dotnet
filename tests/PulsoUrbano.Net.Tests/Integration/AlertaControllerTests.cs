@@ -99,4 +99,70 @@ public class AlertaControllerTests : IClassFixture<PulsoWebAppFactory>
         foreach (var item in dados.EnumerateArray())
             item.GetProperty("zonaId").GetInt32().Should().Be(zonaId);
     }
+
+    // ── N-31 tests ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Put_Confirmar_SetsConfirmadoTrue()
+    {
+        var zonaId = await GetFirstZonaId();
+        var client = _factory.CreateAuthenticatedClient();
+
+        // Create a fresh alerta to confirm (avoid depending on seeded state)
+        var postRes = await client.PostAsJsonAsync("/api/alertas",
+            new AlertaCreateDTO(zonaId, "ATENCAO", 70.0, 22.0, "Teste confirmar."));
+        postRes.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var created = await postRes.Content.ReadFromJsonAsync<AlertaResponseDTO>();
+        created!.Confirmado.Should().BeFalse();
+
+        // PUT confirmar
+        var putRes = await client.PutAsJsonAsync(
+            $"/api/alertas/{created.Id}/confirmar",
+            new AlertaConfirmarDTO(true));
+        putRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var updated = await putRes.Content.ReadFromJsonAsync<AlertaResponseDTO>();
+        updated!.Confirmado.Should().BeTrue();
+        updated.Id.Should().Be(created.Id);
+    }
+
+    [Fact]
+    public async Task Delete_Then_GetById_Returns404()
+    {
+        var zonaId = await GetFirstZonaId();
+        var client = _factory.CreateAuthenticatedClient();
+
+        // Create then immediately delete
+        var postRes = await client.PostAsJsonAsync("/api/alertas",
+            new AlertaCreateDTO(zonaId, "EMERGENCIA", 25.0, 50.0, "Teste delete."));
+        postRes.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await postRes.Content.ReadFromJsonAsync<AlertaResponseDTO>();
+
+        var delRes = await client.DeleteAsync($"/api/alertas/{created!.Id}");
+        delRes.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Subsequent GET must 404
+        var getRes = await client.GetAsync($"/api/alertas/{created.Id}");
+        getRes.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Post_WithoutToken_Returns401()
+    {
+        var client = _factory.CreateClient(); // no auth header
+        var res = await client.PostAsJsonAsync("/api/alertas",
+            new AlertaCreateDTO(1, "ALERTA", 50.0, 30.0, "Sem token."));
+
+        res.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Get_WithoutToken_Returns200()
+    {
+        var client = _factory.CreateClient(); // no auth header — reads are public
+        var res = await client.GetAsync("/api/alertas");
+
+        res.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }
