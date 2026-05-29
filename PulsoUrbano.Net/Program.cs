@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PulsoUrbano.Net.Data;
+using PulsoUrbano.Net.Exceptions;
 using PulsoUrbano.Net.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,7 +32,8 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 var app = builder.Build();
 
 // MIDDLEWARE ORDER — do not reorder
-// 1. app.UseMiddleware<GlobalExceptionMiddleware>();  // N-19
+// 1. Global exception handler (must be first)
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // 2. Swagger — always on for GS demo
 app.UseSwagger();
