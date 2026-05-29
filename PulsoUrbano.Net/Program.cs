@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PulsoUrbano.Net.Data;
+using PulsoUrbano.Net.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,7 +47,8 @@ if (app.Environment.IsDevelopment() &&
 // 4. CORS
 app.UseCors();
 
-// 5. app.UseMiddleware<JwtValidationMiddleware>();  // N-17
+// 5. JWT validation (public-route bypass inside the middleware — N-17/N-18)
+app.UseMiddleware<JwtValidationMiddleware>();
 app.UseRouting();
 app.MapControllers();
 
