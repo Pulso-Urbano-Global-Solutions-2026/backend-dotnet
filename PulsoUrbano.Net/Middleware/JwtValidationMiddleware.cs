@@ -60,8 +60,9 @@ public class JwtValidationMiddleware
 
         try
         {
-            var key       = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-            var handler   = new JwtSecurityTokenHandler();
+            var key     = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+            var handler = new JwtSecurityTokenHandler();
+            handler.InboundClaimTypeMap.Clear(); // preserve short claim names ("role", "email", etc.)
             var principal = handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -73,6 +74,20 @@ public class JwtValidationMiddleware
             }, out _);
 
             ctx.Items["JwtClaims"] = principal;
+
+            // Role 403 hook: controllers set ctx.Items["RequiredRole"] to enforce access
+            // No endpoint requires a specific role yet — hook is ready for future use
+            if (ctx.Items.TryGetValue("RequiredRole", out var requiredRoleObj) &&
+                requiredRoleObj is string requiredRole)
+            {
+                var userRole = principal.FindFirst("role")?.Value ?? string.Empty;
+                if (!userRole.Contains(requiredRole, StringComparison.OrdinalIgnoreCase))
+                {
+                    await Reject(ctx, 403, "Acesso negado: papel insuficiente");
+                    return;
+                }
+            }
+
             await _next(ctx);
         }
         catch (SecurityTokenExpiredException)

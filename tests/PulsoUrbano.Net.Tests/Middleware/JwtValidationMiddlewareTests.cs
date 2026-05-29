@@ -123,6 +123,30 @@ public class JwtValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task ValidToken_InsufficientRole_Returns403()
+    {
+        // Arrange: token has role USER, but route requires ADMIN
+        var ctx = MakeContext("POST", "/api/alertas", $"Bearer {MakeToken()}");
+        ctx.Items["RequiredRole"] = "ADMIN"; // set by a hypothetical controller filter
+        bool nextCalled = false;
+        await Build(_ => { nextCalled = true; return Task.CompletedTask; }).InvokeAsync(ctx);
+
+        nextCalled.Should().BeFalse();
+        ctx.Response.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task ValidToken_SufficientRole_PassesThrough()
+    {
+        var ctx = MakeContext("POST", "/api/alertas", $"Bearer {MakeToken()}");
+        ctx.Items["RequiredRole"] = "USER"; // USER matches the token's role claim
+        bool nextCalled = false;
+        await Build(_ => { nextCalled = true; return Task.CompletedTask; }).InvokeAsync(ctx);
+
+        nextCalled.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task DeleteAlerta_NoToken_Returns401()
     {
         var ctx        = MakeContext("DELETE", "/api/alertas/1");
