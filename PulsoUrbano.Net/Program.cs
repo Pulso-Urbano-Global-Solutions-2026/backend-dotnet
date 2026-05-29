@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using PulsoUrbano.Net.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,9 +6,14 @@ var builder = WebApplication.CreateBuilder(args);
 // --- Configuration: env vars override appsettings ---
 builder.Configuration.AddEnvironmentVariables();
 
-// --- DbContext (Oracle) — wired in N-09/N-22 ---
-// builder.Services.AddDbContext<AppDbContext>(opt =>
-//     opt.UseOracle(builder.Configuration.GetConnectionString("Oracle")));
+// --- DbContext (Oracle) — env-var connection string (no secrets committed) ---
+string oracleConn =
+    $"User Id={Environment.GetEnvironmentVariable("DB_USER") ?? "system"};" +
+    $"Password={Environment.GetEnvironmentVariable("DB_PASS") ?? "oracle"};" +
+    $"Data Source={Environment.GetEnvironmentVariable("DB_HOST") ?? "localhost"}:" +
+    $"{Environment.GetEnvironmentVariable("DB_PORT") ?? "1521"}/" +
+    $"{Environment.GetEnvironmentVariable("DB_SERVICE") ?? "XEPDB1"};";
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseOracle(oracleConn));
 
 // --- Services ---
 builder.Services.AddControllers();
