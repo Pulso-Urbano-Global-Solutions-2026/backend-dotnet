@@ -6,12 +6,19 @@ namespace PulsoUrbano.Net.Data.EntityConfigurations;
 
 public class AlertaHistoricoConfiguration : IEntityTypeConfiguration<AlertaHistorico>
 {
+    private readonly bool _useSequences;
+
+    public AlertaHistoricoConfiguration(bool useSequences = true) => _useSequences = useSequences;
+
     public void Configure(EntityTypeBuilder<AlertaHistorico> e)
     {
         e.ToTable("ALERTA_HISTORICO");
 
         e.HasKey(a => a.Id);
-        e.Property(a => a.Id).HasColumnName("ID_ALERTA").UseHiLo("SEQ_ALERTA_HISTORICO");
+        var idProp = e.Property(a => a.Id).HasColumnName("ID_ALERTA");
+        if (_useSequences)
+            idProp.UseHiLo("SEQ_ALERTA_HISTORICO");
+
         e.Property(a => a.ZonaId).HasColumnName("ID_ZONA").IsRequired();
         e.Property(a => a.NivelAlerta).HasColumnName("NIVEL_ALERTA").HasMaxLength(15).IsRequired();
         e.Property(a => a.ScoreRegistrado).HasColumnName("SCORE_REGISTRADO").HasColumnType("NUMBER(5,2)");

@@ -13,7 +13,9 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
-        mb.ApplyConfiguration(new ZonaReferenciaConfiguration());
-        mb.ApplyConfiguration(new AlertaHistoricoConfiguration());
+        // SQLite (tests) does not support sequences; Oracle uses HiLo
+        bool useSequences = Database.ProviderName == "Oracle.EntityFrameworkCore";
+        mb.ApplyConfiguration(new ZonaReferenciaConfiguration(useSequences));
+        mb.ApplyConfiguration(new AlertaHistoricoConfiguration(useSequences));
     }
 }
