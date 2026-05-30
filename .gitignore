@@ -6,6 +6,10 @@
 # dotenv files
 .env
 
+# Claude Code
+CLAUDE.md
+.claude/
+
 # User-specific files
 *.rsuser
 *.suo
