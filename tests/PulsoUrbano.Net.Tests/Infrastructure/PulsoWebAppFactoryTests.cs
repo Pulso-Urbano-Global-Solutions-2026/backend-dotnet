@@ -4,6 +4,7 @@ using FluentAssertions;
 
 namespace PulsoUrbano.Net.Tests.Infrastructure;
 
+[Trait("Category", "Integration")]
 public class PulsoWebAppFactoryTests : IClassFixture<PulsoWebAppFactory>
 {
     private readonly HttpClient _client;

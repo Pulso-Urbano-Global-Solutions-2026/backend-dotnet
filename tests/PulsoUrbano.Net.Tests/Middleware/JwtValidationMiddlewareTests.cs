@@ -16,6 +16,9 @@ public class JwtValidationMiddlewareTests
 
     private static JwtValidationMiddleware Build(RequestDelegate next)
     {
+        // Isolation: integration factory sets JWT_SECRET process-wide; override it here
+        // so unit tests always use their own secret regardless of execution order.
+        Environment.SetEnvironmentVariable("JWT_SECRET", Secret);
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:Secret"] = Secret })
             .Build();
