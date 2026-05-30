@@ -2,7 +2,7 @@
 ## Sprint: 27/05 → 09/06/2026
 ## Owner: Felipe Ferrete (RM 562999) + Claude Agent
 ## API: Secondary · Port 5000 · Domain: Alert History + Statistics
-## Stack: ASP.NET Core 8 · EF Core 8 · Oracle.EntityFrameworkCore · Swashbuckle · xUnit
+## Stack: ASP.NET Core 10 · EF Core 8 · Oracle.EntityFrameworkCore · Swashbuckle · xUnit
 
 > Boundary recap (absolute): .NET **validates** the JWT issued by Java (shared `JWT_SECRET`), it does **not** generate tokens, calculate scores, ingest satellite data, or own any Java-owned table. It owns the `ALERTA_HISTORICO` + `ZONA_REFERENCIA_NET` lifecycle, aggregated statistics, and the EF Core migration proof.
 
@@ -99,13 +99,13 @@ N-28 + N-34 ─> N-35 (README + Bosak QA issue template)
 ### IMPLEMENT
 **Create:**
 - `PulsoUrbano.Net.sln`
-- `PulsoUrbano.Net/PulsoUrbano.Net.csproj` (net8.0, `<Nullable>enable</Nullable>`, `<ImplicitUsings>enable</ImplicitUsings>`, `<GenerateDocumentationFile>true</GenerateDocumentationFile>`)
+- `PulsoUrbano.Net/PulsoUrbano.Net.csproj` (net10.0, `<Nullable>enable</Nullable>`, `<ImplicitUsings>enable</ImplicitUsings>`, `<GenerateDocumentationFile>true</GenerateDocumentationFile>`)
 - Empty folders matching the contract: `Controllers/`, `Models/Entities/`, `Models/DTOs/`, `Data/`, `Data/Migrations/`, `Services/`, `Exceptions/`, `Middleware/`.
 
 **Full implementation spec:**
 ```bash
 dotnet new sln -n PulsoUrbano.Net
-dotnet new webapi -n PulsoUrbano.Net --use-controllers -f net8.0
+dotnet new webapi -n PulsoUrbano.Net --use-controllers -f net10.0
 dotnet sln add PulsoUrbano.Net/PulsoUrbano.Net.csproj
 ```
 - Delete the template `WeatherForecast.cs` and `WeatherForecastController.cs`.
@@ -146,7 +146,7 @@ READ CONTEXT.md
 **Can parallelize with:** —
 
 ### READ BEFORE STARTING
-- `PulsoUrbano.Net.csproj` — confirm `net8.0`.
+- `PulsoUrbano.Net.csproj` — confirm `net10.0`.
 - OPUS prompt → "Halting condition" (Oracle EF Core 8.x must match EF Core 8).
 
 ### IMPLEMENT
@@ -208,7 +208,7 @@ git commit -m " chore(deps): add EF Core Oracle, Swashbuckle, JWT, FluentValidat
 
 **Full implementation spec:**
 ```bash
-dotnet new xunit -n PulsoUrbano.Net.Tests -o tests/PulsoUrbano.Net.Tests -f net8.0
+dotnet new xunit -n PulsoUrbano.Net.Tests -o tests/PulsoUrbano.Net.Tests -f net10.0
 dotnet sln add tests/PulsoUrbano.Net.Tests/PulsoUrbano.Net.Tests.csproj
 dotnet add tests/PulsoUrbano.Net.Tests reference PulsoUrbano.Net/PulsoUrbano.Net.csproj
 dotnet add tests/PulsoUrbano.Net.Tests package Microsoft.AspNetCore.Mvc.Testing --version 8.0.*
@@ -231,7 +231,7 @@ dotnet test tests/PulsoUrbano.Net.Tests --logger "console;verbosity=minimal"
 ### COMMIT
 ```bash
 git add tests/ PulsoUrbano.Net.sln
-git commit -m "🧪 test(infra): add xUnit project with SQLite in-memory fixture (task N-03)"
+git commit -m " test(infra): add xUnit project with SQLite in-memory fixture (task N-03)"
 ```
 
 ---
@@ -363,7 +363,7 @@ dotnet build PulsoUrbano.Net/PulsoUrbano.Net.csproj -q
 ### COMMIT
 ```bash
 git add Models/Entities/ZonaReferencia.cs
-git commit -m "🗄️ feat(entity): add ZonaReferencia (1-side of 1:N) (task N-05)"
+git commit -m " feat(entity): add ZonaReferencia (1-side of 1:N) (task N-05)"
 ```
 
 ---
@@ -1639,16 +1639,16 @@ git commit -m "🧪 test(api): statistics correctness + 1:N migration smoke (tas
 **Full implementation spec — multi-stage:**
 ```dockerfile
 # build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
-COPY PulsoUrbano.Net.sln .
+COPY PulsoUrbano.Net.slnx .
 COPY PulsoUrbano.Net/PulsoUrbano.Net.csproj PulsoUrbano.Net/
 RUN dotnet restore PulsoUrbano.Net/PulsoUrbano.Net.csproj
 COPY PulsoUrbano.Net/ PulsoUrbano.Net/
 RUN dotnet publish PulsoUrbano.Net/PulsoUrbano.Net.csproj -c Release -o /app/publish --no-restore
 
 # runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /app
 RUN addgroup -S pulso && adduser -S pulso -G pulso
 COPY --from=build /app/publish .
@@ -1749,7 +1749,7 @@ git commit -m "🔧 chore(env): .env.example + env manifest for Clayton (task N-
 **README sections (in order):**
 1. **Visão geral** — what the .NET API does and its boundary vs Java (one paragraph).
 2. **Arquitetura** — a Mermaid (or draw.io exported PNG) diagram: client → .NET API (5000) → Oracle (1521); show ZonaReferencia 1:N AlertaHistorico.
-3. **Stack** — ASP.NET Core 8, EF Core 8, Oracle, Swashbuckle, xUnit.
+3. **Stack** — ASP.NET Core 10, EF Core 8, Oracle, Swashbuckle, xUnit.
 4. **Endpoints** — table of the 6 routes with verb, auth, sample request/response (use the contract examples).
 5. **Como rodar (How-to, do clone até rodar):**
    ```bash

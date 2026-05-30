@@ -88,7 +88,7 @@ Header: Authorization: Bearer {access_token}
                ▼
 ┌──────────────────────────┐   ┌──────────────────────┐
 │   JAVA API (PRIMÁRIA)    │   │   .NET API (SEC.)     │
-│   Spring Boot 3.2        │   │   ASP.NET Core 8      │
+│   Spring Boot 3.2        │   │   ASP.NET Core 10     │
 │   Porta: 8080            │   │   Porta: 5000         │
 │                          │   │                       │
 │  - Ingestão orbital      │   │  - CRUD alertas       │
@@ -408,7 +408,7 @@ spring.application.name=pulso-urbano-java
 
 ### Stack obrigatória (disciplina .NET)
 ```
-ASP.NET Core 8 (Minimal API ou MVC Controller)
+ASP.NET Core 10 (Minimal API ou MVC Controller)
 Entity Framework Core 8
 Oracle.EntityFrameworkCore (ODP.NET)
 EF Core Migrations (obrigatório)
@@ -886,7 +886,7 @@ ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 
 ```dockerfile
 # pulso-dotnet/Dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /app
 RUN addgroup -S pulso && adduser -S pulso -G pulso
 COPY --from=build /app/publish .

@@ -128,7 +128,7 @@ O dado de satélite é inerte. Ele só vira valor quando alguém o consome e age
                ▼
 ┌──────────────────────────┐   ┌──────────────────────┐
 │   JAVA API (PRIMÁRIA)    │   │   .NET API (SEC.)     │
-│   Spring Boot 3.2        │   │   ASP.NET Core 8      │
+│   Spring Boot 3.2        │   │   ASP.NET Core 10     │
 │   Porta: 8080            │   │   Porta: 5000         │
 │   ★ MOBILE CONSOME ESTA  │   │   (não usar no MVP)   │
 └──────────┬───────────────┘   └──────────────────────┘
