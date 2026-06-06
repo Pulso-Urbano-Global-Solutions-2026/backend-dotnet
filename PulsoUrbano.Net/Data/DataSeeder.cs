@@ -7,21 +7,26 @@ public static class DataSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
     {
-        if (await db.ZonasReferencia.AnyAsync()) return;
+        // Check alertas — zonas may exist without alertas if a previous seed was interrupted
+        if (await db.AlertasHistorico.CountAsync() > 0) return;
 
         var rng = new Random(562999);
 
-        var zonas = new List<ZonaReferencia>
+        // Reuse existing zonas or create them if missing
+        var zonas = await db.ZonasReferencia.OrderBy(z => z.Id).ToListAsync();
+        if (zonas.Count == 0)
         {
-            new() { Nome = "Centro",     Municipio = "São Paulo" },
-            new() { Nome = "Zona Leste", Municipio = "São Paulo" },
-            new() { Nome = "Zona Sul",   Municipio = "São Paulo" },
-            new() { Nome = "Zona Norte", Municipio = "São Paulo" },
-            new() { Nome = "Zona Oeste", Municipio = "São Paulo" }
-        };
-
-        await db.ZonasReferencia.AddRangeAsync(zonas);
-        await db.SaveChangesAsync(); // HiLo IDs assigned here
+            zonas =
+            [
+                new() { Nome = "Centro",     Municipio = "São Paulo" },
+                new() { Nome = "Zona Leste", Municipio = "São Paulo" },
+                new() { Nome = "Zona Sul",   Municipio = "São Paulo" },
+                new() { Nome = "Zona Norte", Municipio = "São Paulo" },
+                new() { Nome = "Zona Oeste", Municipio = "São Paulo" }
+            ];
+            await db.ZonasReferencia.AddRangeAsync(zonas);
+            await db.SaveChangesAsync();
+        }
 
         var alertas = new List<AlertaHistorico>();
 
