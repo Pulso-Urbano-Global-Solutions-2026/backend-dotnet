@@ -72,7 +72,10 @@ graph LR
 
 Valores válidos para `nivelAlerta`: `ATENCAO`, `ALERTA`, `EMERGENCIA`.
 
-Documentação interativa completa: `http://localhost:5000/swagger`
+Documentação interativa completa:
+- Local: `http://localhost:5000/swagger`
+
+> **Java API (parceira):** `https://hearty-adaptation-production-6de3.up.railway.app` — emite os JWTs necessários para os endpoints protegidos desta API.
 
 ---
 
