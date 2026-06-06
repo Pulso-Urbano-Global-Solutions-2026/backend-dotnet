@@ -1,9 +1,20 @@
-# Pulso Urbano — API .NET
+# Pulso Urbano — .NET API
 
-API secundária do projeto **Pulso Urbano** (Global Solution 2026/1 · FIAP · ADS 2º ano).  
-Responsável por: histórico de alertas ambientais por zona de São Paulo e estatísticas de qualidade do ar derivadas de dados orbitais (Sentinel-5P/TROPOMI, ECOSTRESS).
+API secundária do sistema Pulso Urbano, responsável pelo histórico de alertas de qualidade do ar e estatísticas agregadas por zona de São Paulo.
 
-> **Fronteira com a Java API:** a Java API autentica usuários, consome as fontes orbitais (Copernicus, NASA) e emite o score de risco. Esta API .NET armazena o **histórico** desses alertas e expõe estatísticas agregadas para o app mobile. Nenhuma chamada cross-API existe em runtime — a integração é via banco Oracle compartilhado e JWT compartilhado.
+**Global Solution 2026/1 · FIAP · ADS 2º ano**
+
+---
+
+## Visão Geral
+
+Esta API gerencia o ciclo de vida de **AlertaHistórico** — registros de eventos de qualidade do ar crítica em zonas monitoradas da cidade. Ela **não** calcula scores, não ingere dados de satélite e não emite tokens JWT; essas responsabilidades pertencem à API Java (porta 8080). O JWT emitido pelo Java é validado aqui via segredo compartilhado (`JWT_SECRET`).
+
+Domínio exclusivo do .NET:
+- CRUD completo de `AlertaHistorico` (1:N com `ZonaReferencia`)
+- Estatísticas agregadas por zona (score médio, tendência, dias críticos)
+- Resumo global dos últimos 30 dias
+- EF Core Migrations (prova de migração para o critério da disciplina)
 
 ---
 
@@ -11,154 +22,91 @@ Responsável por: histórico de alertas ambientais por zona de São Paulo e esta
 
 ```mermaid
 graph LR
-    subgraph Clientes
-        M[📱 App Mobile]
-        J[☕ Java API :8080]
+    A["Mobile App\n/ Swagger"] -->|"HTTP :5000"| B[".NET API\nASP.NET Core · Porta 5000"]
+    B -->|"EF Core 8\n(Oracle provider)"| C[("Oracle 19c\nPorta 1521")]
+
+    subgraph ".NET tables (EF Core)"
+        D["ZONA_REFERENCIA_NET\n(ZonaReferencia)"]
+        E["ALERTA_HISTORICO\n(AlertaHistorico)"]
+        D -->|"1 : N\n(Restrict)"| E
     end
 
-    subgraph pulso-net
-        N[🔷 .NET API :5000]
-        O[(🗃️ Oracle XE :1521)]
-    end
+    C --- D
+    C --- E
 
-    M -->|GET público| N
-    M -->|POST/PUT/DELETE + Bearer JWT| N
-    J -->|Bearer JWT emitido| M
-    N -->|EF Core / Oracle| O
-
-    subgraph Oracle Schema
-        Z[ZONA_REFERENCIA_NET]
-        A[ALERTA_HISTORICO]
-        Z -->|1 : N| A
-    end
+    F["Java API\nPorta 8080"] -->|"JWT_SECRET\ncompartilhado"| B
+    F -->|"DDL próprio\n(ZONA_CIDADE, SCORE_DIARIO...)"| C
 ```
 
-**Fluxo de dados:**  
-Sentinel-5P → Java API → score CRITICO → `POST /api/alertas` (Bearer) → Oracle → `GET /api/alertas` (mobile)
+> A FK entre `ZonaReferencia` e `AlertaHistorico` usa `DeleteBehavior.Restrict`: deletar uma zona que ainda possui alertas retorna **409 Conflict**.
 
 ---
 
 ## Stack
 
-| Camada | Tecnologia |
+| Componente | Versão |
 |---|---|
-| Runtime | .NET 10 / ASP.NET Core 10 |
-| ORM | Entity Framework Core 8 + Oracle.EntityFrameworkCore 8.23 |
-| Banco | Oracle XE 21c (container `gvenzl/oracle-xe:21-slim`) |
-| Docs | Swashbuckle (OpenAPI 3) |
-| Validação | FluentValidation 11 |
-| Auth | JWT (HMAC-SHA256) via middleware customizado |
-| Testes | xUnit + WebApplicationFactory + SQLite in-memory |
-| Container | Docker (multi-stage, Alpine, usuário não-root) |
+| ASP.NET Core | .NET 10 (net10.0) |
+| Entity Framework Core | 8.x |
+| Oracle.EntityFrameworkCore | 8.23.x |
+| Swashbuckle.AspNetCore | 6.6.x |
+| FluentValidation.AspNetCore | 11.x |
+| System.IdentityModel.Tokens.Jwt | 8.x |
+| xUnit + FluentAssertions | 2.x / 6.x |
+| SQLite (testes) | via EF Core Sqlite 8.x |
 
 ---
 
 ## Endpoints
 
-| Verbo | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/api/alertas` | Bearer | Registra alerta histórico |
-| `GET` | `/api/alertas` | Público | Lista alertas paginados (`zonaId`, `dias`, `pagina`, `tamanhoPagina`) |
-| `GET` | `/api/alertas/{id}` | Público | Busca alerta por ID |
-| `PUT` | `/api/alertas/{id}/confirmar` | Bearer | Confirma ou reverte confirmação |
-| `DELETE` | `/api/alertas/{id}` | Bearer | Remove alerta (hard delete, 204) |
-| `GET` | `/api/estatisticas/zona/{zonaId}` | Público | Estatísticas da zona (`dias`) |
-| `GET` | `/api/estatisticas/resumo` | Público | Resumo geral dos últimos 30 dias |
-| `GET` | `/api/health` | Público | Health check + ping Oracle |
+| Método | Rota | Auth | Resposta |
+|--------|------|------|----------|
+| `POST` | `/api/alertas` | Bearer | 201 `AlertaResponseDTO` |
+| `GET` | `/api/alertas?zonaId=&dias=30&pagina=1&tamanhoPagina=20` | Público | 200 `PaginatedResponseDTO<AlertaResponseDTO>` |
+| `GET` | `/api/alertas/{id}` | Público | 200 / 404 |
+| `PUT` | `/api/alertas/{id}/confirmar` | Bearer | 200 / 404 |
+| `DELETE` | `/api/alertas/{id}` | Bearer | 204 / 404 |
+| `GET` | `/api/estatisticas/zona/{zonaId}?dias=30` | Público | 200 `EstatisticasZonaDTO` |
+| `GET` | `/api/estatisticas/resumo` | Público | 200 `EstatisticasResumoDTO` |
+| `GET` | `/api/health` | Público | 200 `HealthResponseDTO` |
 
-### Contratos resumidos
+Valores válidos para `nivelAlerta`: `ATENCAO`, `ALERTA`, `EMERGENCIA`.
 
-**POST /api/alertas** — body:
-```json
-{
-  "zonaId": 1,
-  "nivelAlerta": "ALERTA",
-  "scoreRegistrado": 72.5,
-  "no2Registrado": 38.1,
-  "textoRecomendacao": "Evite atividades ao ar livre prolongadas."
-}
-```
-Resposta `201 Created`:
-```json
-{
-  "id": 42,
-  "zonaId": 1,
-  "zonaNome": "Centro",
-  "nivelAlerta": "ALERTA",
-  "scoreRegistrado": 72.5,
-  "no2Registrado": 38.1,
-  "textoRecomendacao": "Evite atividades ao ar livre prolongadas.",
-  "dtAlerta": "2026-05-30T14:00:00Z",
-  "confirmado": false
-}
-```
-
-**GET /api/estatisticas/zona/1** — resposta `200 OK`:
-```json
-{
-  "zonaId": 1,
-  "zonaNome": "Centro",
-  "periodo": { "dias": 30, "inicio": "2026-04-30", "fim": "2026-05-30" },
-  "totalAlertas": 12,
-  "alertasPorNivel": { "ATENCAO": 5, "ALERTA": 6, "EMERGENCIA": 1 },
-  "scoreMinimo": 45.0,
-  "scoreMaximo": 91.3,
-  "scoreMedia": 67.8,
-  "diasComAlerta": 9,
-  "piorDia": "2026-05-18",
-  "tendencia": "PIORANDO"
-}
-```
+Documentação interativa completa: `http://localhost:5000/swagger`
 
 ---
 
 ## Como rodar
 
-### Opção A — Docker (recomendado para demo)
-
-Pré-requisito: Docker Engine + Compose v2.
+### Opção 1 — Docker (recomendado para demo)
 
 ```bash
-git clone <URL_DO_REPO> && cd pulso-dotnet
-
-# 1. Copie e ajuste as variáveis de ambiente
-cp .env.example .env
-# Edite JWT_SECRET para igualar ao da Java API se necessário
-
-# 2. Suba os containers (Oracle + .NET API)
-docker compose up -d
-
-# 3. Aguarde o Oracle inicializar (~30s) e verifique
+git clone <url-do-repo> && cd pulso-dotnet
+cp .env.example .env          # ajuste DB_HOST=oracle e JWT_SECRET conforme compose
+docker build -t pulso-dotnet:gs .
+docker run --rm --env-file .env -p 5000:5000 pulso-dotnet:gs
 curl http://localhost:5000/api/health
-
-# Swagger interativo:
-# http://localhost:5000/swagger
+# Swagger: http://localhost:5000/swagger
 ```
 
-### Opção B — Local sem Docker
+> Para subir o stack completo (Oracle + Java + .NET), use o `docker-compose.yml` do monorepo (dono: Clayton).
 
-Pré-requisitos: .NET 10 SDK, Oracle XE 21 local ou remoto, EF Core tools.
+### Opção 2 — Desenvolvimento local (dotnet run)
+
+**Pré-requisitos:** .NET 10 SDK, Oracle 19c acessível, `dotnet-ef` global.
 
 ```bash
-# Instalar EF tools (uma vez)
-dotnet tool install --global dotnet-ef
+git clone <url-do-repo> && cd pulso-dotnet
+cp .env.example .env          # ajuste DB_HOST=localhost
+# exporte as variáveis de ambiente (PowerShell):
+$env:DB_USER="system"; $env:DB_PASS="oracle"; $env:DB_HOST="localhost"
+$env:DB_PORT="1521"; $env:DB_SERVICE="XEPDB1"
+$env:JWT_SECRET="<mesmo valor do Java>"
+$env:ASPNETCORE_ENVIRONMENT="Development"
 
-# Variáveis de ambiente (ou edite appsettings.Development.json)
-export DB_USER=system
-export DB_PASS=oracle
-export DB_HOST=localhost
-export DB_PORT=1521
-export DB_SERVICE=XEPDB1
-export JWT_SECRET=pulso-secret-2026
-export ASPNETCORE_ENVIRONMENT=Development
-
-# Aplicar migrations e iniciar
-cd PulsoUrbano.Net
-dotnet ef database update
-dotnet run
-
-# API disponível em http://localhost:5000
-curl http://localhost:5000/api/health
+dotnet ef database update --project PulsoUrbano.Net   # aplica migrations + seed automático
+dotnet run --project PulsoUrbano.Net
+# Swagger: http://localhost:5000/swagger
 ```
 
 ---
@@ -166,137 +114,165 @@ curl http://localhost:5000/api/health
 ## Migrations
 
 ```bash
-# Listar migrations existentes
-dotnet ef migrations list --project PulsoUrbano.Net
+# Instalar ferramenta global (uma vez)
+dotnet tool install --global dotnet-ef --version 8.*
 
-# Aplicar ao banco
+# Aplicar migrations existentes no Oracle
 dotnet ef database update --project PulsoUrbano.Net
 
-# Criar nova migration (após alterar entidade/DbContext)
-dotnet ef migrations add NomeDaMigracao --project PulsoUrbano.Net
+# Verificar estado
+dotnet ef migrations list --project PulsoUrbano.Net
+# → InitialCreate (Applied)
 
-# Remover última migration (apenas se ainda não aplicada ao banco)
-dotnet ef migrations remove --project PulsoUrbano.Net
+# Adicionar nova migration (após alterar entidade)
+dotnet ef migrations add NomeDaMigracao --project PulsoUrbano.Net --output-dir Data/Migrations
+dotnet ef database update --project PulsoUrbano.Net
 ```
 
-> As migrations ficam em `PulsoUrbano.Net/Migrations/`. O seed de dados de desenvolvimento roda automaticamente em `ASPNETCORE_ENVIRONMENT=Development` na inicialização.
+> Em ambiente `Development` o app executa `Database.Migrate()` e `DataSeeder.SeedAsync()` automaticamente no boot (5 zonas + 40+ alertas de demonstração).
 
 ---
 
 ## Testes
 
+Os testes rodam sobre **SQLite in-memory** — Oracle não é necessário.
+
 ```bash
-# Todos os testes (unit + integration)
-dotnet test
+# Todos os testes
+dotnet test tests/PulsoUrbano.Net.Tests
 
-# Apenas testes de integração (WebApplicationFactory + SQLite)
-dotnet test --filter "Category=Integration"
+# Apenas integração (WebApplicationFactory)
+dotnet test tests/PulsoUrbano.Net.Tests --filter "FullyQualifiedName~Integration"
 
-# Apenas testes unitários
-dotnet test --filter "Category!=Integration"
+# Classe específica
+dotnet test tests/PulsoUrbano.Net.Tests --filter "FullyQualifiedName~AlertaServiceTests"
 ```
 
-Saída esperada (exemplo):
+Saída esperada:
+
 ```
-Passed!  - Failed: 0, Passed: 18, Skipped: 0, Total: 18
+Test run for PulsoUrbano.Net.Tests.dll
+Passed! - Failed: 0, Passed: XX, Skipped: 0
 ```
 
-Os testes de integração sobem um servidor in-memory com SQLite, aplicam seed, e exercitam a stack completa (middleware JWT, validação, camada de serviço, banco).
+Cobertura de testes:
+
+| Camada | Arquivo de teste |
+|---|---|
+| Seeder | `Data/DataSeederTests.cs` |
+| DTO Validator | `DTOs/AlertaCreateDTOValidatorTests.cs` |
+| JWT Middleware | `Middleware/JwtValidationMiddlewareTests.cs` |
+| Exception Middleware | `Exceptions/GlobalExceptionMiddlewareTests.cs` |
+| AlertaService | `Services/AlertaServiceTests.cs` |
+| EstatisticasService | `Services/EstatisticasServiceTests.cs` |
+| HealthController | `Controllers/HealthControllerTests.cs` |
+| AlertaController (integração) | `Integration/AlertaControllerTests.cs` |
+| EstatisticasController (integração) | `Integration/EstatisticasControllerTests.cs` |
+| Migration smoke test | `Integration/MigrationSmokeTests.cs` |
 
 ---
 
-## Exemplos de teste de endpoint
+## Exemplos de Teste de Endpoint
 
-> Substitua `<TOKEN>` por um JWT válido emitido pela Java API ou gerado com `JWT_SECRET=pulso-secret-2026`.
+Substitua `$TOKEN` pelo JWT emitido pela API Java (`POST /api/v1/auth/login`).
 
-### Health check
-```bash
-curl -s http://localhost:5000/api/health | jq .
-```
+### Criar alerta (Bearer obrigatório)
 
-### POST — registrar alerta (requer Bearer)
 ```bash
 curl -s -X POST http://localhost:5000/api/alertas \
-  -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "zonaId": 1,
     "nivelAlerta": "ALERTA",
-    "scoreRegistrado": 72.5,
-    "no2Registrado": 38.1,
-    "textoRecomendacao": "Evite atividades ao ar livre prolongadas."
-  }' | jq .
+    "scoreRegistrado": 38.5,
+    "no2Registrado": 41.2,
+    "textoRecomendacao": "Evite esforço físico ao ar livre entre 11h e 16h."
+  }'
+# → 201 Created  { "id": 42, "zonaNome": "Centro", "nivelAlerta": "ALERTA", ... }
 ```
 
-### GET — listar alertas da zona 1 (últimos 7 dias)
+### Listar alertas (público)
+
 ```bash
-curl -s "http://localhost:5000/api/alertas?zonaId=1&dias=7&pagina=1&tamanhoPagina=10" | jq .
+curl -s "http://localhost:5000/api/alertas?zonaId=1&dias=30&pagina=1&tamanhoPagina=5"
+# → 200 { "total": 12, "pagina": 1, "tamanhoPagina": 5, "dados": [...] }
 ```
 
-### GET — buscar alerta por ID
+### Buscar alerta por ID
+
 ```bash
-curl -s http://localhost:5000/api/alertas/1 | jq .
+curl -s http://localhost:5000/api/alertas/1
+# → 200 { "id": 1, "zonaNome": "Centro", ... }
+# ID inexistente → 404 { "status": 404, "erro": "Não encontrado" }
 ```
 
-### PUT — confirmar alerta (requer Bearer)
+### Confirmar alerta (Bearer obrigatório)
+
 ```bash
 curl -s -X PUT http://localhost:5000/api/alertas/1/confirmar \
-  -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"confirmado": true}' | jq .
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"confirmado": true}'
+# → 200 { "confirmado": true, ... }
 ```
 
-### DELETE — remover alerta (requer Bearer)
+### Deletar alerta (Bearer obrigatório)
+
 ```bash
-curl -s -o /dev/null -w "%{http_code}" \
-  -X DELETE http://localhost:5000/api/alertas/1 \
-  -H "Authorization: Bearer <TOKEN>"
-# Esperado: 204
+curl -s -X DELETE http://localhost:5000/api/alertas/1 \
+  -H "Authorization: Bearer $TOKEN"
+# → 204 No Content
 ```
 
-### GET — estatísticas da zona 1 (30 dias)
+### Estatísticas por zona
+
 ```bash
-curl -s "http://localhost:5000/api/estatisticas/zona/1?dias=30" | jq .
+curl -s "http://localhost:5000/api/estatisticas/zona/1?dias=30"
+# → 200 {
+#      "zonaId": 1, "zonaNome": "Centro",
+#      "totalAlertas": 12, "alertasPorNivel": {"ATENCAO":5,"ALERTA":5,"EMERGENCIA":2},
+#      "scoreMinimo": 22.1, "scoreMaximo": 78.4, "scoreMedia": 51.3,
+#      "diasComAlerta": 8, "piorDia": "2026-05-15T...",
+#      "tendencia": "ESTAVEL"
+#    }
 ```
 
-### GET — resumo geral
+### Resumo geral
+
 ```bash
-curl -s http://localhost:5000/api/estatisticas/resumo | jq .
+curl -s http://localhost:5000/api/estatisticas/resumo
+# → 200 {
+#      "totalZonas": 5, "totalAlertas30dias": 47,
+#      "zonaComMaisAlertas": { "id": 1, "nome": "Centro", "total": 15 },
+#      "nivelPredominante": "ALERTA",
+#      "dtAtualizacao": "2026-06-06T..."
+#    }
+```
+
+### Health check
+
+```bash
+curl -s http://localhost:5000/api/health
+# → 200 { "status": "healthy", "servico": "pulso-urbano-dotnet", "versao": "1.0.0",
+#          "timestamp": "...", "database": "connected" }
 ```
 
 ---
 
-## Variáveis de ambiente
+## Vídeo Pitch (3 min)
 
-Ver [`.env.example`](.env.example) para a lista completa.
-
-| Variável | Padrão | Descrição |
-|---|---|---|
-| `DB_USER` | `system` | Usuário Oracle |
-| `DB_PASS` | `oracle` | Senha Oracle |
-| `DB_HOST` | `oracle` | Host/serviço no compose |
-| `DB_PORT` | `1521` | Porta Oracle |
-| `DB_SERVICE` | `XEPDB1` | Pluggable database |
-| `JWT_SECRET` | `pulso-secret-2026` | **Deve ser igual ao da Java API** |
-| `ASPNETCORE_URLS` | `http://+:5000` | Binding do Kestrel |
-| `ASPNETCORE_ENVIRONMENT` | `Production` | Ambiente |
-
----
-
-## Vídeo pitch (3 min)
-
-> **[▶ Assista ao pitch do Pulso Urbano](#)** ← Felipe atualiza este link antes da entrega (09/06/2026).
+> Link a ser adicionado por Felipe após a gravação.
+> <!-- TODO: inserir URL do pitch aqui -->
 
 ---
 
 ## Equipe
 
-| Nome | RM | Papel |
+| Membro | RM | Responsabilidade |
 |---|---|---|
-| Felipe Ferrete Lemes | 562999 | Tech lead · Backend .NET + Java |
-
----
-
-## Licença
-
-Projeto acadêmico — Global Solution 2026/1 · FIAP. Uso restrito à avaliação.
+| Felipe Ferrete | 562999 | Tech lead · Backend .NET (este repositório) |
+| Clayton | — | Oracle DDL · Docker Compose · DevOps |
+| Guilherme | — | Mobile React Native |
+| Bosak | — | Arquitetura · QA |
+| Brisola | — | IoT ESP32 / Wokwi |

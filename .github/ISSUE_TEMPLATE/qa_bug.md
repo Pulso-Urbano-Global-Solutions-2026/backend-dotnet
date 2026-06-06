@@ -1,46 +1,57 @@
 ---
-name: QA Bug Report
-about: Reporte de bug para revisão do Bosak — Pulso Urbano .NET API
-title: "[BUG] "
+name: Bug Report — QA
+about: Reporte um bug encontrado durante os testes de QA da API .NET
+title: "[BUG] <descrição curta>"
 labels: bug, qa
 assignees: ''
 ---
 
 ## Passos para reproduzir
 
-<!-- Liste os passos exatos para reproduzir o problema. Ex: -->
 1. 
 2. 
 3. 
 
 ## Resultado esperado
 
-<!-- O que deveria acontecer. -->
+<!-- O que deveria acontecer -->
 
 ## Resultado atual
 
-<!-- O que aconteceu de fato. Inclua a resposta JSON completa se disponível. -->
+<!-- O que aconteceu de fato -->
 
-## Endpoint + status code
+## Endpoint + Status Code
 
 | Campo | Valor |
 |---|---|
-| Verbo + Rota | ex: `POST /api/alertas` |
-| Status recebido | ex: `500 Internal Server Error` |
-| Status esperado | ex: `201 Created` |
-| Ambiente | `local` / `docker` / `staging` |
+| Método | `GET / POST / PUT / DELETE` |
+| Rota | `/api/alertas/...` |
+| Status recebido | `4xx / 5xx` |
+| Status esperado | `2xx / 4xx` |
 
-**Comando curl utilizado:**
 ```bash
-# Cole aqui o curl exato que reproduz o bug
+# Comando curl usado para reproduzir (remova tokens reais):
+curl -s -X METHOD http://localhost:5000/api/...
 ```
 
-**Resposta recebida:**
+## Resposta da API
+
 ```json
-
+{
+  "status": 0,
+  "erro": "",
+  "mensagem": ""
+}
 ```
 
-## Screenshot / log
+## Screenshot / Log
 
-<!-- Anexe prints de tela, logs do container ou stack trace. -->
-<!-- Para logs do container: docker logs pulso-dotnet-562999 -->
+<!-- Cole aqui o screenshot ou trecho de log relevante -->
+
+## Ambiente
+
+- [ ] Local (dotnet run)
+- [ ] Docker (docker run)
+- [ ] Compose completo (Oracle + Java + .NET)
+
+**Versão / commit:** 
