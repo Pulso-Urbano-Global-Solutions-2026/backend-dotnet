@@ -410,8 +410,8 @@ PU-backend-dotnet/
 | Deploy fora de localhost | ✅ | Azure VM `20.12.204.186:5000` via Docker Compose |
 | Testes automatizados | ✅ | 10 classes de teste — unit + integração com WebApplicationFactory |
 | README completo com How to, exemplos, links | ✅ | Este documento |
-| Vídeo demonstração (até 8 min) | _gravar_ | [YouTube — preencher após gravação] |
-| Vídeo pitch (até 3 min) | _gravar_ | [YouTube — preencher após gravação] |
+| Vídeo demonstração (até 8 min) | ✅ | https://youtu.be/ZTe-8x3eBoc |
+| Vídeo pitch (até 3 min) | ✅ | https://youtu.be/dGy20MDjnL4 |
 
 ---
 
@@ -447,5 +447,5 @@ PU-backend-dotnet/
 | .NET Swagger (Azure) | `http://20.12.204.186:5000/swagger` |
 | Java Swagger (Railway) | `https://hearty-adaptation-production-6de3.up.railway.app/swagger-ui.html` |
 | Repositório | _preencher após publicação_ |
-| Vídeo demonstração | _[YouTube — preencher após gravação]_ |
-| Vídeo pitch | _[YouTube — preencher após gravação]_ |
+| Vídeo demonstração | https://youtu.be/ZTe-8x3eBoc |
+| Vídeo pitch | https://youtu.be/dGy20MDjnL4 |
