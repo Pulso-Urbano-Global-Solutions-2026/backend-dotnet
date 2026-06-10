@@ -29,29 +29,83 @@ Quando o banco Oracle detecta um score CRÍTICO via trigger, ele insere um regis
 
 ## Arquitetura
 
-```
-App Mobile / Swagger
-        │
-        │ HTTP :5000
-        ▼
-.NET API (ASP.NET Core .NET 10)
-  ├── GlobalExceptionMiddleware    ← trata todas as exceções em um único lugar
-  ├── JwtValidationMiddleware      ← valida Bearer token (segredo do Java)
-  ├── AlertaController             ← CRUD completo de alertas
-  ├── EstatisticasController       ← stats por zona e resumo global
-  ├── HealthController             ← health check do container
-  ├── AlertaService                ← lógica de negócio
-  ├── EstatisticasService          ← agregações
-  └── AppDbContext (EF Core 8)
-        │
-        │ Oracle.EntityFrameworkCore 8.23.x
-        ▼
-Oracle 19c
-  ├── ZONA_REFERENCIA_NET   (espelho de ZONA_CIDADE — seed determinístico)
-  └── ALERTA_HISTORICO      (1:N com ZonaReferencia · DeleteBehavior.Restrict)
+### Visão geral do sistema
 
-Java API (porta 8080) ──► compartilha JWT_SECRET ──► .NET API valida tokens
+```mermaid
+graph TD
+    Mobile["App Mobile\nReact Native / Expo"]
+    SwaggerNet["Swagger UI\n:5000/swagger"]
+    JavaAPI["Java API :8080\nSpring Boot 3.2\nScore · Auth · Mapa"]
+    DotNetAPI[".NET API :5000\nASP.NET Core 10\nAlertas · Estatísticas"]
+    Oracle[("Oracle 19c\nALERTA_HISTORICO\nZONA_REFERENCIA_NET")]
+    ESP32["ESP32 / HiveMQ\nMQTT"]
+
+    Mobile -->|"JWT Bearer"| JavaAPI
+    Mobile -->|"GET alertas (público)"| DotNetAPI
+    SwaggerNet -->|"testes manuais"| DotNetAPI
+    JavaAPI -->|"JWT_SECRET compartilhado"| DotNetAPI
+    JavaAPI -->|"JPA / JDBC"| Oracle
+    DotNetAPI -->|"EF Core 8"| Oracle
+    ESP32 -->|"MQTT pub"| JavaAPI
 ```
+
+### Pipeline de requisição
+
+```mermaid
+sequenceDiagram
+    participant C as Cliente
+    participant GE as GlobalExceptionMiddleware
+    participant JW as JwtValidationMiddleware
+    participant Ctrl as Controller
+    participant Svc as Service
+    participant DB as Oracle (EF Core)
+
+    C->>GE: HTTP Request
+    GE->>JW: next()
+    JW->>JW: rota protegida?
+    alt sem Bearer / token inválido
+        JW-->>C: 401 Unauthorized
+    else token válido ou rota pública
+        JW->>Ctrl: next()
+        Ctrl->>Ctrl: FluentValidation
+        alt validação falha
+            Ctrl-->>C: 400 Bad Request
+        else válido
+            Ctrl->>Svc: chama service
+            Svc->>DB: query EF Core
+            DB-->>Svc: resultado
+            Svc-->>Ctrl: DTO
+            Ctrl-->>C: 200 / 201 / 204
+        end
+    end
+    Note over GE: exceções não tratadas<br/>são capturadas aqui → status correto
+```
+
+### Modelo de dados (Entidade-Relacionamento)
+
+```mermaid
+erDiagram
+    ZONA_REFERENCIA_NET {
+        NUMBER ID_ZONA PK
+        VARCHAR2 NOME
+        VARCHAR2 MUNICIPIO
+    }
+    ALERTA_HISTORICO {
+        NUMBER ID_ALERTA PK
+        NUMBER ID_ZONA FK
+        VARCHAR2 NIVEL_ALERTA
+        NUMBER SCORE_REGISTRADO
+        NUMBER NO2_REGISTRADO
+        VARCHAR2 TEXTO_RECOMENDACAO
+        DATE DT_ALERTA
+        NUMBER CONFIRMADO
+    }
+
+    ZONA_REFERENCIA_NET ||--o{ ALERTA_HISTORICO : "1:N"
+```
+
+> `DeleteBehavior.Restrict` — deletar uma zona que ainda tem alertas retorna **409 Conflict**.  
+> Sequences Oracle com HiLo (`INCREMENT BY 10`) para PKs sem `IDENTITY`.
 
 ---
 
