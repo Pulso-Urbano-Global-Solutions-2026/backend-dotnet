@@ -446,6 +446,6 @@ PU-backend-dotnet/
 |---------|-----|
 | .NET Swagger (Azure) | `http://20.12.204.186:5000/swagger` |
 | Java Swagger (Railway) | `https://hearty-adaptation-production-6de3.up.railway.app/swagger-ui.html` |
-| Repositório | _preencher após publicação_ |
+| Repositório | https://github.com/Pulso-Urbano-Global-Solutions-2026/backend-dotnet |
 | Vídeo demonstração | https://youtu.be/ZTe-8x3eBoc |
 | Vídeo pitch | https://youtu.be/dGy20MDjnL4 |
